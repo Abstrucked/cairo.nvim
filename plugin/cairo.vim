@@ -1,30 +1,36 @@
-" Cairo.nvim: Cairo language support for Neovim
-" Author: Abstrucked
-" Description: LSP, syntax, and formatting support for Cairo language
+" Cairo.nvim - Filetype detection and basic commands only
+" No keymaps, no LSP setup - that's handled by Lua
 
-if exists('g:loaded_cairo') | finish | endif
-let g:loaded_cairo = 1
+if exists('g:loaded_cairo_ft') | finish | endif
+let g:loaded_cairo_ft = 1
 
-" Cairo file detection
+" Cairo filetype detection
 augroup cairo_filetype
   autocmd!
-  autocmd BufRead,BufNewFile *.cairo setfiletype cairo
+  
+  " Cairo source files
+  execute 'autocmd BufRead,BufNewFile *.cairo setfiletype cairo'
+  
+  " Cairo test files
+  execute 'autocmd BufRead,BufNewFile */tests/*/*.cairo setfiletype cairo'
+  execute 'autocmd BufRead,BufNewFile */test_*/*.cairo setfiletype cairo'
+  
+  " Cairo lib files
+  execute 'autocmd BufRead,BufNewFile */lib/*/*.cairo setfiletype cairo'
 augroup END
 
-" Commands
-command! CheckCairoLSP lua require('cairo.lsp').check_lsp()
-command! CairoFmt lua require('conform').format({ bufnr = 0, filetype = 'cairo' })
-
-" Key mappings (optional - can be customized)
-augroup cairo_mappings
-  autocmd!
-  autocmd FileType cairo nnoremap <buffer><silent> <leader>cf :CairoFmt<CR>
-  autocmd FileType cairo nnoremap <buffer><silent> <leader>cl :CheckCairoLSP<CR>
-augroup END
-
-" Status line integration (optional)
-if exists('g:statusline_components') && has_key(g:statusline_components, 'cairo')
-  unlet g:statusline_components.cairo
+" Basic fallback commands (Lua will override these when loaded)
+if !exists('g:loaded_cairo_lsp')
+  command! -nargs=0 CairoCheck echo 'CairoCheck: LSP not loaded - install nvim-lspconfig'
+  command! -nargs=0 CairoRestart echo 'CairoRestart: LSP not loaded - install nvim-lspconfig'
+  command! -nargs=0 CairoLocateProject echo 'No Cairo project found'
 endif
-let g:statusline_components = get(g:statusline_components, {}, {})
-let g:statusline_components.cairo = '%{exists("g:loaded_cairo") ? " 🐪" : ""}'
+
+command! -nargs=0 CairoStatus 
+  \ lua print(vim.inspect(require('cairo.lsp').clients()))
+
+" Help
+command! -nargs=0 CairoHelp 
+  \ echo 'Cairo.nvim - LSP support for Cairo language\n' .
+  \ 'Commands: :CairoCheck, :CairoRestart, :CairoLocateProject\n' .
+  \ 'Status: ' . (exists('g:loaded_cairo_lsp') ? '✅ LSP loaded' : '⚠️  LSP not loaded')
