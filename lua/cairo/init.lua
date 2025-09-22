@@ -1,3 +1,9 @@
+-- Add this plugin to runtimepath for syntax files
+
+local dir = vim.fn.fnamemodify(vim.api.nvim_get_current_script(), ':h:h')
+
+vim.opt.rtp:append(dir)
+
 -- Set file type for .cairo files
 
 vim.filetype.add({
@@ -46,11 +52,11 @@ if ok_ts then
 
       enable = true,
 
-      additional_vim_regex_highlighting = false,
+      additional_vim_regex_highlighting = true,
 
     },
 
-    ensure_installed = { "cairo" }, -- This will install the parser if not present
+    -- ensure_installed = { "cairo" }, -- Uncomment if cairo parser is available
 
   })
 
