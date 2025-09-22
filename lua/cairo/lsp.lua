@@ -29,7 +29,7 @@ local function lsp_status()
 	end
 
 	local executable = vim.fn.executable(cmd[1])
-	local clients = vim.lsp.get_active_clients({ name = "cairo_ls" })
+	local clients = vim.lsp.get_clients({ name = "cairo_ls" })
 
 	if executable == 1 and #clients > 0 then
 		return string.format("✅ Active (%d buffer%s)", #clients, #clients == 1 and "" or "s")
@@ -92,7 +92,7 @@ function M.setup(config)
 			if client.server_capabilities.documentFormattingProvider then
 				table.insert(caps, "formatting")
 			end
-			if client.server_capabilities.gotoCapability then
+			if client.server_capabilities.definitionProvider then
 				table.insert(caps, "navigation")
 			end
 
@@ -127,9 +127,9 @@ function M.setup_buffer_commands(bufnr)
 	})
 
 	vim.api.nvim_buf_create_user_command(bufnr, "CairoRestart", function()
-		local clients = vim.lsp.get_active_clients({ bufnr = bufnr, name = "cairo_ls" })
+		local clients = vim.lsp.get_clients({ bufnr = bufnr, name = "cairo_ls" })
 		for _, client in ipairs(clients) do
-			client.stop()
+			client.stop(client)
 		end
 		require("lspconfig").cairo_ls.setup({})
 		vim.notify("Cairo LSP restarted", vim.log.levels.INFO)
@@ -140,8 +140,7 @@ function M.setup_buffer_commands(bufnr)
 
 	-- Project commands
 	vim.api.nvim_buf_create_user_command(bufnr, "CairoLocateProject", function()
-		local root =
-			require("lspconfig.util").root_pattern("Scarb.toml", "cairo_project.toml", ".git")(vim.fn.expand("%:p"))
+		local root = require("lspconfig.util").root_pattern(unpack(M.config.root_markers))(vim.fn.expand("%:p"))
 		if root then
 			vim.notify("Cairo project root: " .. root, vim.log.levels.INFO)
 			vim.cmd("edit " .. root)
@@ -157,12 +156,6 @@ end
 function M.setup_diagnostics(config)
 	local diagnostics = config or {}
 
-	for _, handler in ipairs(vim.lsp.handlers.values()) do
-		if handler.lsp_handle then
-			-- Preserve existing handlers
-		end
-	end
-
 	-- Configure diagnostics globally for Cairo files
 	vim.api.nvim_create_autocmd("FileType", {
 		pattern = "cairo",
@@ -174,11 +167,11 @@ function M.setup_diagnostics(config)
 				severity_sort = diagnostics.severity_sort or true,
 				float = {
 					border = "rounded",
-					source = "always",
+					source = true,
 					header = "",
 					prefix = "",
 				},
-			}, vim.api.nvim_get_current_buf()) -- Buffer-local config
+			}) -- Global diagnostic config for Cairo files
 		end,
 	})
 end
@@ -206,7 +199,7 @@ function M.check_lsp_detailed()
 		vim.fn.executable(cmd[1]) == 1 and vim.log.levels.INFO or vim.log.levels.WARN
 	)
 
-	local clients = vim.lsp.get_active_clients({ name = "cairo_ls" })
+	local clients = vim.lsp.get_clients({ name = "cairo_ls" })
 	vim.notify(string.format("Active clients: %d", #clients), vim.log.levels.INFO)
 
 	if #clients > 0 then
@@ -226,7 +219,11 @@ function M.check_lsp_detailed()
 	end
 
 	if next(severity_counts) then
-		vim.notify("Diagnostics: " .. vim.inspect(severity_counts):gsub("'", ""):gsub("%s+", " "), vim.log.levels.INFO)
+		local diag_str = {}
+		for severity, count in pairs(severity_counts) do
+			table.insert(diag_str, string.format("%s: %d", severity, count))
+		end
+		vim.notify("Diagnostics: " .. table.concat(diag_str, ", "), vim.log.levels.INFO)
 	else
 		vim.notify("No diagnostics in current buffer", vim.log.levels.INFO)
 	end
@@ -234,18 +231,13 @@ end
 
 -- Public API for integration with other plugins
 M.clients = function()
-	return vim.lsp.get_active_clients({ name = "cairo_ls" })
+	return vim.lsp.get_clients({ name = "cairo_ls" })
 end
 
 M.is_attached = function(bufnr)
 	bufnr = bufnr or vim.api.nvim_get_current_buf()
-	local clients = M.clients()
-	for _, client in ipairs(clients) do
-		if client.config.root_dir and client.config.root_dir(vim.fn.expand("#" .. bufnr .. ":p")) then
-			return true
-		end
-	end
-	return false
+	local clients = vim.lsp.get_clients({ bufnr = bufnr, name = "cairo_ls" })
+	return #clients > 0
 end
 
 return M
