@@ -41,6 +41,7 @@ local function lsp_status()
 end
 
 function M.setup(config)
+	M.config = config
 	local lspconfig = require("lspconfig")
 	local configs = require("lspconfig.configs")
 	local util = require("lspconfig.util")
