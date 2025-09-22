@@ -131,6 +131,13 @@ function M.setup_buffer_commands(bufnr)
 		force = true,
 	})
 
+	vim.api.nvim_buf_create_user_command(bufnr, "CairoHelp", function()
+		M.show_help()
+	end, {
+		desc = "Show Cairo LSP help and status",
+		force = true,
+	})
+
 	-- Project commands
 	vim.api.nvim_buf_create_user_command(bufnr, "CairoLocateProject", function()
 		local root = require("lspconfig.util").root_pattern(unpack(M.config.root_markers))(vim.fn.expand("%:p"))
@@ -218,6 +225,12 @@ function M.check_lsp_detailed()
 	end
 
 	vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO)
+end
+
+function M.show_help()
+	local status = lsp_status()
+	local help = "Cairo.nvim - LSP support for Cairo language\nCommands: :CairoCheck, :CairoRestart, :CairoLocateProject\nStatus: " .. status
+	vim.notify(help, vim.log.levels.INFO)
 end
 
 -- Public API for integration with other plugins
