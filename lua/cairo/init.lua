@@ -21,23 +21,17 @@ vim.filetype.add({
 local ok, lspconfig = pcall(require, "lspconfig")
 
 if ok then
+  local util = require('lspconfig.util')
 
   lspconfig.cairo.setup({
-
     cmd = { "cairo-language-server" },
-
     filetypes = { "cairo" },
-
-    root_dir = lspconfig.util.root_pattern("Scarb.toml", "cairo.toml", ".git"),
-
+    root_dir = util.root_pattern("Scarb.toml", "cairo.toml", ".git"),
+    settings = {},
     -- Add any other options here
-
   })
-
 else
-
   vim.notify("lspconfig not found, cairo LSP not set up", vim.log.levels.WARN)
-
 end
 
 -- Treesitter setup
@@ -67,33 +61,23 @@ else
 end
 
 -- Conform setup for formatting
+-- Note: scarb fmt formats the entire project, so we run it from the project root
 
 local ok_conform, conform = pcall(require, "conform")
 
 if ok_conform then
-
-  conform.formatters.cairo = {
-
+  conform.formatters.cairo_fmt = {
     command = "scarb",
-
-    args = { "fmt", "$FILENAME" },
-
+    args = { "fmt" },
     stdin = false,
-
+    cwd = require("conform.util").root_file({ "Scarb.toml", "cairo.toml" }),
   }
 
   conform.setup({
-
     formatters_by_ft = {
-
-      cairo = { "cairo" },
-
+      cairo = { "cairo_fmt" },
     },
-
   })
-
 else
-
   vim.notify("conform not found, cairo formatting not set up", vim.log.levels.WARN)
-
 end
