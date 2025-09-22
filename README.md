@@ -30,20 +30,30 @@ The script will:
 
 ### Manual Installation
 
-If you prefer manual installation, copy the `lua/cairo.lua` file to your Neovim configuration:
+If you prefer manual installation, copy the `lua/cairo` directory to your Neovim configuration:
 
 ```bash
-mkdir -p ~/.config/nvim/lua/plugins
-cp lua/cairo.lua ~/.config/nvim/lua/plugins/
+mkdir -p ~/.config/nvim/lua
+cp -r lua/cairo ~/.config/nvim/lua/
 ```
 
 Then add the plugin to your `lazy.lua` configuration:
 
 ```lua
--- ~/.config/nvim/lua/plugins/lazy.lua
 require("lazy").setup({
   -- ... other plugins
-  { dir = "~/.config/nvim/lua/plugins" },
+  { dir = "~/.config/nvim/lua/cairo" },
+})
+```
+
+### Direct Installation via Lazy
+
+If the repository is published on GitHub, you can install it directly in your Lazy configuration:
+
+```lua
+require("lazy").setup({
+  -- ... other plugins
+  { "Abstrucked/cairo.nvim" },
 })
 ```
 

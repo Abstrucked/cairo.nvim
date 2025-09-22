@@ -13,9 +13,8 @@ NC='\033[0m' # No Color
 
 # Config paths
 NVIM_CONFIG_DIR="$HOME/.config/nvim"
-PLUGINS_DIR="$NVIM_CONFIG_DIR/lua/plugins"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CAIRO_LUA="$SCRIPT_DIR/lua/cairo.lua"
+CAIRO_DIR="$SCRIPT_DIR/lua/cairo"
 
 echo -e "${YELLOW}Cairo Language Server Neovim Setup${NC}"
 echo "======================================"
@@ -33,38 +32,34 @@ if [[ ! -d "$NVIM_CONFIG_DIR" ]]; then
   exit 1
 fi
 
-# Check if plugins directory exists
-if [[ ! -d "$PLUGINS_DIR" ]]; then
-  echo -e "${YELLOW}Warning: Plugins directory not found: $PLUGINS_DIR${NC}"
-  echo "Creating plugins directory..."
-  mkdir -p "$PLUGINS_DIR"
-fi
-
-# Check if cairo.lua exists in the repo
-if [[ ! -f "$CAIRO_LUA" ]]; then
-  echo -e "${RED}Error: Cairo lua file not found: $CAIRO_LUA${NC}"
-  echo "Make sure you have the lua/cairo.lua file in your repository."
+# Check if cairo directory exists in the repo
+if [[ ! -d "$CAIRO_DIR" ]]; then
+  echo -e "${RED}Error: Cairo directory not found: $CAIRO_DIR${NC}"
+  echo "Make sure you have the lua/cairo/ directory in your repository."
   exit 1
 fi
 
-# Check if file already exists
-if [[ -f "$PLUGINS_DIR/cairo.lua" ]]; then
-  echo -e "${YELLOW}cairo.lua already exists in $PLUGINS_DIR${NC}"
+# Check if directory already exists
+DEST_DIR="$NVIM_CONFIG_DIR/lua/cairo"
+if [[ -d "$DEST_DIR" ]]; then
+  echo -e "${YELLOW}Cairo directory already exists in $DEST_DIR${NC}"
   read -p "Do you want to overwrite it? (y/N): " -n 1 -r
   echo
   if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     echo "Installation cancelled."
     exit 0
   fi
-  echo "Overwriting existing file..."
+  echo "Removing existing directory..."
+  rm -rf "$DEST_DIR"
 fi
 
-# Copy the file
-echo -e "${YELLOW}Installing cairo.lua to $PLUGINS_DIR/...${NC}"
-cp "$CAIRO_LUA" "$PLUGINS_DIR/cairo.lua"
+# Copy the directory
+echo -e "${YELLOW}Installing cairo plugin to $DEST_DIR/...${NC}"
+mkdir -p "$NVIM_CONFIG_DIR/lua"
+cp -r "$CAIRO_DIR" "$DEST_DIR"
 
 # Make it executable if it has shebang (unlikely for lua, but just in case)
-chmod 644 "$PLUGINS_DIR/cairo.lua"
+# No need for chmod on directory
 
 # Check for LazyVim/NvChad detection
 if [[ -f "$NVIM_CONFIG_DIR/init.lua" ]] || [[ -f "$NVIM_CONFIG_DIR/init.vim" ]]; then
