@@ -1,75 +1,38 @@
--- Add this plugin to runtimepath for syntax files
-
-local dir = vim.fn.fnamemodify(vim.api.nvim_get_current_script(), ":h:h")
-
-vim.opt.rtp:append(dir)
-
--- Set file type for .cairo files
-
-vim.filetype.add({
-
-	extension = {
-
-		cairo = "cairo",
+return {
+	-- Cairo syntax (load early so it provides ftdetect/syntax)
+	{
+		dir = vim.fn.stdpath("data") .. "/site/pack/vendor/start/cairo-1-vim-config",
+		name = "cairo-syntax",
+		lazy = false,
 	},
-})
 
--- LSP setup
+	-- LSP setup for cairo-language-server via scarb
+	{
+		"neovim/nvim-lspconfig",
+		event = { "BufReadPre", "BufNewFile" },
+		dependencies = { "Abstrucked/cairo.nvim" },
+		config = function()
+			require("cairo.lsp").setup()
+		end,
+	},
 
-local ok, lspconfig = pcall(require, "lspconfig")
+	-- Treesitter configuration
+	{
+		"nvim-treesitter/nvim-treesitter",
+		optional = true,
+		event = { "BufReadPre", "BufNewFile" },
+		opts = function(_, opts)
+			require("cairo.syntax").setup_treesitter(opts)
+		end,
+	},
 
-if ok then
-	local util = require("lspconfig.util")
-
-	lspconfig.cairo.setup({
-		cmd = { "scarb cairo-language-server" },
-		filetypes = { "cairo" },
-		root_dir = util.root_pattern("Scarb.toml", "cairo.toml", ".git"),
-		settings = {},
-		-- Add any other options here
-	})
-else
-	vim.notify("lspconfig not found, cairo LSP not set up", vim.log.levels.WARN)
-end
-
--- Treesitter setup
-
-local ok_ts, ts = pcall(require, "nvim-treesitter")
-
-if ok_ts then
-	ts.setup({
-
-		highlight = {
-
-			enable = true,
-
-			additional_vim_regex_highlighting = true,
-		},
-
-		-- ensure_installed = { "cairo" }, -- Uncomment if cairo parser is available
-	})
-else
-	vim.notify("nvim-treesitter not found, cairo syntax highlighting not set up", vim.log.levels.WARN)
-end
-
--- Conform setup for formatting
--- Note: scarb fmt formats the entire project, so we run it from the project root
-
-local ok_conform, conform = pcall(require, "conform")
-
-if ok_conform then
-	conform.formatters.cairo_fmt = {
-		command = "scarb",
-		args = { "fmt", "$FILE_NAME" },
-		stdin = false,
-		cwd = require("conform.util").root_file({ "Scarb.toml", "cairo.toml" }),
-	}
-
-	conform.setup({
-		formatters_by_ft = {
-			cairo = { "cairo_fmt" },
-		},
-	})
-else
-	vim.notify("conform not found, cairo formatting not set up", vim.log.levels.WARN)
-end
+	-- Format setup
+	{
+		"stevearc/conform.nvim",
+		optional = true,
+		event = { "BufWritePre" },
+		opts = function(_, opts)
+			require("cairo.format").setup_formatters(opts)
+		end,
+	},
+}
