@@ -1,80 +1,93 @@
-return {
-	-- Cairo syntax (load early so it provides ftdetect/syntax)
-	{
-		"amanusk/cairo-1-vim-config",
-		lazy = false,
-	},
+-- Set file type for .cairo files
 
-	-- LSP setup for cairo-language-server via scarb
-	{
-		"neovim/nvim-lspconfig",
-		config = function()
-			local lspconfig = require("lspconfig")
-			local configs = require("lspconfig.configs")
-			local util = require("lspconfig.util")
+vim.filetype.add({
 
-			local scarb = vim.fn.exepath("scarb")
-			local cmd
-			if scarb ~= "" then
-				cmd = { scarb, "cairo-language-server" }
-			elseif vim.fn.exepath("cairo-language-server") ~= "" then
-				cmd = { vim.fn.exepath("cairo-language-server") }
-			else
-				cmd = { "scarb", "cairo-language-server" }
-			end
+  extension = {
 
-			if not configs.cairo_ls then
-				configs.cairo_ls = {
-					default_config = {
-						cmd = cmd,
-						filetypes = { "cairo" },
-						root_dir = function(fname)
-							return util.root_pattern("Scarb.toml", "cairo_project.toml", ".git")(fname)
-								or vim.fs.dirname(fname)
-						end,
-						single_file_support = true,
-					},
-				}
-			else
-				configs.cairo_ls.default_config.cmd = cmd
-			end
+    cairo = "cairo",
 
-			lspconfig.cairo_ls.setup({})
-		end,
-	},
+  },
 
-	-- Optional: disable TS highlighting for cairo if you don't have a parser
-	{
-		"nvim-treesitter/nvim-treesitter",
-		optional = true,
-		opts = function(_, opts)
-			opts.highlight = opts.highlight or {}
-			local disable = opts.highlight.disable or {}
-			table.insert(disable, "cairo")
-			opts.highlight.disable = disable
-		end,
-	},
+})
 
-	-- Format setup via conform.nvim with scarb fmt
-	{
-		"stevearc/conform.nvim",
-		optional = true,
-		opts = function(_, opts)
-			opts.formatters_by_ft = opts.formatters_by_ft or {}
-			opts.formatters = opts.formatters or {}
+-- LSP setup
 
-			local scarb = vim.fn.exepath("scarb")
-			if scarb ~= "" then
-				opts.formatters["cairo-scarb-fmt"] = {
-					command = scarb,
-					args = { "fmt", "$FILENAME" },
-					stdin = false,
-					cwd = require("conform.util").root_file({ "Scarb.toml", ".git" }),
-				}
-				opts.formatters_by_ft.cairo = { "cairo-scarb-fmt" }
-			end
+local ok, lspconfig = pcall(require, "lspconfig")
 
-			return opts
-		end,
-	},
-}
+if ok then
+
+  lspconfig.cairo.setup({
+
+    cmd = { "cairo-language-server" },
+
+    filetypes = { "cairo" },
+
+    root_dir = lspconfig.util.root_pattern("Scarb.toml", "cairo.toml", ".git"),
+
+    -- Add any other options here
+
+  })
+
+else
+
+  vim.notify("lspconfig not found, cairo LSP not set up", vim.log.levels.WARN)
+
+end
+
+-- Treesitter setup
+
+local ok_ts, ts = pcall(require, "nvim-treesitter")
+
+if ok_ts then
+
+  ts.setup({
+
+    highlight = {
+
+      enable = true,
+
+      additional_vim_regex_highlighting = false,
+
+    },
+
+    ensure_installed = { "cairo" }, -- This will install the parser if not present
+
+  })
+
+else
+
+  vim.notify("nvim-treesitter not found, cairo syntax highlighting not set up", vim.log.levels.WARN)
+
+end
+
+-- Conform setup for formatting
+
+local ok_conform, conform = pcall(require, "conform")
+
+if ok_conform then
+
+  conform.formatters.cairo = {
+
+    command = "scarb",
+
+    args = { "fmt", "$FILENAME" },
+
+    stdin = false,
+
+  }
+
+  conform.setup({
+
+    formatters_by_ft = {
+
+      cairo = { "cairo" },
+
+    },
+
+  })
+
+else
+
+  vim.notify("conform not found, cairo formatting not set up", vim.log.levels.WARN)
+
+end
