@@ -174,33 +174,28 @@ function M.check_lsp()
 end
 
 function M.check_lsp_detailed()
-	local cmd = get_cairo_ls_cmd()
-	vim.notify("=== Cairo LSP Detailed Status ===", vim.log.levels.INFO)
+	local lines = {}
+	table.insert(lines, "=== Cairo LSP Detailed Status ===")
 
+	local cmd = get_cairo_ls_cmd()
 	if cmd then
-		vim.notify("Command: " .. table.concat(cmd, " "), vim.log.levels.INFO)
-		vim.notify(
-			"Executable: " .. (vim.fn.executable(cmd[1]) == 1 and "✅" or "❌"),
-			vim.fn.executable(cmd[1]) == 1 and vim.log.levels.INFO or vim.log.levels.WARN
-		)
+		table.insert(lines, "Command: " .. table.concat(cmd, " "))
+		table.insert(lines, "Executable: " .. (vim.fn.executable(cmd[1]) == 1 and "✅" or "❌"))
 	end
 
 	local clients = vim.lsp.get_clients({ name = "cairo_ls" })
-	vim.notify(string.format("Active clients: %d", #clients), vim.log.levels.INFO)
+	table.insert(lines, string.format("Active clients: %d", #clients))
 
 	if #clients > 0 then
 		for i, client in ipairs(clients) do
 			local root = client.config.root_dir
-			vim.notify(string.format("Client %d - Root: %s", i, root or "N/A"), vim.log.levels.INFO)
+			table.insert(lines, string.format("Client %d - Root: %s", i, root or "N/A"))
 		end
 	end
 
 	if #clients == 0 then
-		vim.notify("❌ Language server not found", vim.log.levels.ERROR)
-		vim.notify(
-			"Install scarb: curl -sSf https://raw.githubusercontent.com/modelchecking/scarb/main/install.sh | bash",
-			vim.log.levels.INFO
-		)
+		table.insert(lines, "❌ Language server not found")
+		table.insert(lines, "Install scarb: curl -sSf https://raw.githubusercontent.com/modelchecking/scarb/main/install.sh | bash")
 	end
 
 	-- Current buffer diagnostics
@@ -217,10 +212,12 @@ function M.check_lsp_detailed()
 		for severity, count in pairs(severity_counts) do
 			table.insert(diag_str, string.format("%s: %d", severity, count))
 		end
-		vim.notify("Diagnostics: " .. table.concat(diag_str, ", "), vim.log.levels.INFO)
+		table.insert(lines, "Diagnostics: " .. table.concat(diag_str, ", "))
 	else
-		vim.notify("No diagnostics in current buffer", vim.log.levels.INFO)
+		table.insert(lines, "No diagnostics in current buffer")
 	end
+
+	vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO)
 end
 
 -- Public API for integration with other plugins
