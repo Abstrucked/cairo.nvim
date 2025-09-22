@@ -1,25 +1,17 @@
+-- Cache the LSP command to avoid repeated exepath calls
 local M = {}
 
--- Cache the LSP command to avoid repeated exepath calls
-local _cairo_ls_cmd = nil
-
 local function get_cairo_ls_cmd()
-	if _cairo_ls_cmd then
-		return _cairo_ls_cmd
-	end
-
 	local scarb = vim.fn.exepath("scarb")
 	local cairo_ls = vim.fn.exepath("cairo-language-server")
 
 	if scarb ~= "" then
-		_cairo_ls_cmd = { scarb, "cairo-language-server" }
+		return { scarb, "cairo-language-server" }
 	elseif cairo_ls ~= "" then
-		_cairo_ls_cmd = { cairo_ls }
+		return { cairo_ls }
 	else
-		_cairo_ls_cmd = nil
+		return nil
 	end
-
-	return _cairo_ls_cmd
 end
 
 local function lsp_status()
@@ -185,29 +177,30 @@ function M.check_lsp_detailed()
 	local cmd = get_cairo_ls_cmd()
 	vim.notify("=== Cairo LSP Detailed Status ===", vim.log.levels.INFO)
 
-	if not cmd then
-		vim.notify("❌ Language server not found", vim.log.levels.ERROR)
+	if cmd then
+		vim.notify("Command: " .. table.concat(cmd, " "), vim.log.levels.INFO)
 		vim.notify(
-			"Install scarb: curl -sSf https://raw.githubusercontent.com/modelchecking/scarb/main/install.sh | bash",
-			vim.log.levels.INFO
+			"Executable: " .. (vim.fn.executable(cmd[1]) == 1 and "✅" or "❌"),
+			vim.fn.executable(cmd[1]) == 1 and vim.log.levels.INFO or vim.log.levels.WARN
 		)
-		return
 	end
-
-	vim.notify("Command: " .. table.concat(cmd, " "), vim.log.levels.INFO)
-	vim.notify(
-		"Executable: " .. (vim.fn.executable(cmd[1]) == 1 and "✅" or "❌"),
-		vim.fn.executable(cmd[1]) == 1 and vim.log.levels.INFO or vim.log.levels.WARN
-	)
 
 	local clients = vim.lsp.get_clients({ name = "cairo_ls" })
 	vim.notify(string.format("Active clients: %d", #clients), vim.log.levels.INFO)
 
 	if #clients > 0 then
 		for i, client in ipairs(clients) do
-			local root = client.config.root_dir and client.config.root_dir(vim.fn.expand("%:p"))
+			local root = client.config.root_dir
 			vim.notify(string.format("Client %d - Root: %s", i, root or "N/A"), vim.log.levels.INFO)
 		end
+	end
+
+	if #clients == 0 then
+		vim.notify("❌ Language server not found", vim.log.levels.ERROR)
+		vim.notify(
+			"Install scarb: curl -sSf https://raw.githubusercontent.com/modelchecking/scarb/main/install.sh | bash",
+			vim.log.levels.INFO
+		)
 	end
 
 	-- Current buffer diagnostics
