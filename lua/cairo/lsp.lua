@@ -1,25 +1,17 @@
+-- Cache the LSP command to avoid repeated exepath calls
 local M = {}
 
--- Cache the LSP command to avoid repeated exepath calls
-local _cairo_ls_cmd = nil
-
 local function get_cairo_ls_cmd()
-	if _cairo_ls_cmd then
-		return _cairo_ls_cmd
-	end
-
 	local scarb = vim.fn.exepath("scarb")
 	local cairo_ls = vim.fn.exepath("cairo-language-server")
 
 	if scarb ~= "" then
-		_cairo_ls_cmd = { scarb, "cairo-language-server" }
+		return { scarb, "cairo-language-server" }
 	elseif cairo_ls ~= "" then
-		_cairo_ls_cmd = { cairo_ls }
+		return { cairo_ls }
 	else
-		_cairo_ls_cmd = nil
+		return nil
 	end
-
-	return _cairo_ls_cmd
 end
 
 local function lsp_status()
@@ -41,6 +33,7 @@ local function lsp_status()
 end
 
 function M.setup(config)
+	M.config = config
 	local lspconfig = require("lspconfig")
 	local configs = require("lspconfig.configs")
 	local util = require("lspconfig.util")
@@ -138,6 +131,13 @@ function M.setup_buffer_commands(bufnr)
 		force = true,
 	})
 
+	vim.api.nvim_buf_create_user_command(bufnr, "CairoHelp", function()
+		M.show_help()
+	end, {
+		desc = "Show Cairo LSP help and status",
+		force = true,
+	})
+
 	-- Project commands
 	vim.api.nvim_buf_create_user_command(bufnr, "CairoLocateProject", function()
 		local root = require("lspconfig.util").root_pattern(unpack(M.config.root_markers))(vim.fn.expand("%:p"))
@@ -181,32 +181,28 @@ function M.check_lsp()
 end
 
 function M.check_lsp_detailed()
-	local cmd = get_cairo_ls_cmd()
-	vim.notify("=== Cairo LSP Detailed Status ===", vim.log.levels.INFO)
+	local lines = {}
+	table.insert(lines, "=== Cairo LSP Detailed Status ===")
 
-	if not cmd then
-		vim.notify("❌ Language server not found", vim.log.levels.ERROR)
-		vim.notify(
-			"Install scarb: curl -sSf https://raw.githubusercontent.com/modelchecking/scarb/main/install.sh | bash",
-			vim.log.levels.INFO
-		)
-		return
+	local cmd = get_cairo_ls_cmd()
+	if cmd then
+		table.insert(lines, "Command: " .. table.concat(cmd, " "))
+		table.insert(lines, "Executable: " .. (vim.fn.executable(cmd[1]) == 1 and "✅" or "❌"))
 	end
 
-	vim.notify("Command: " .. table.concat(cmd, " "), vim.log.levels.INFO)
-	vim.notify(
-		"Executable: " .. (vim.fn.executable(cmd[1]) == 1 and "✅" or "❌"),
-		vim.fn.executable(cmd[1]) == 1 and vim.log.levels.INFO or vim.log.levels.WARN
-	)
-
 	local clients = vim.lsp.get_clients({ name = "cairo_ls" })
-	vim.notify(string.format("Active clients: %d", #clients), vim.log.levels.INFO)
+	table.insert(lines, string.format("Active clients: %d", #clients))
 
 	if #clients > 0 then
 		for i, client in ipairs(clients) do
-			local root = client.config.root_dir and client.config.root_dir(vim.fn.expand("%:p"))
-			vim.notify(string.format("Client %d - Root: %s", i, root or "N/A"), vim.log.levels.INFO)
+			local root = client.config.root_dir
+			table.insert(lines, string.format("Client %d - Root: %s", i, root or "N/A"))
 		end
+	end
+
+	if #clients == 0 then
+		table.insert(lines, "❌ Language server not found")
+		table.insert(lines, "Install scarb: curl -sSf https://raw.githubusercontent.com/modelchecking/scarb/main/install.sh | bash")
 	end
 
 	-- Current buffer diagnostics
@@ -223,10 +219,18 @@ function M.check_lsp_detailed()
 		for severity, count in pairs(severity_counts) do
 			table.insert(diag_str, string.format("%s: %d", severity, count))
 		end
-		vim.notify("Diagnostics: " .. table.concat(diag_str, ", "), vim.log.levels.INFO)
+		table.insert(lines, "Diagnostics: " .. table.concat(diag_str, ", "))
 	else
-		vim.notify("No diagnostics in current buffer", vim.log.levels.INFO)
+		table.insert(lines, "No diagnostics in current buffer")
 	end
+
+	vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO)
+end
+
+function M.show_help()
+	local status = lsp_status()
+	local help = "Cairo.nvim - LSP support for Cairo language\nCommands: :CairoCheck, :CairoRestart, :CairoLocateProject\nStatus: " .. status
+	vim.notify(help, vim.log.levels.INFO)
 end
 
 -- Public API for integration with other plugins
