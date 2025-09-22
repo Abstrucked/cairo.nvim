@@ -5,8 +5,10 @@ A Neovim plugin for Cairo language support, providing syntax highlighting, langu
 ## Features
 
 - Syntax highlighting for Cairo files (.cairo)
-- Cairo Language Server integration
-- LSP support for code completion, diagnostics, and navigation
+- Cairo Language Server integration via Scarb
+- LSP support for code completion, diagnostics, navigation, and formatting
+- Cairo-specific buffer commands (`:CairoCheck`, `:CairoRestart`, `:CairoLocateProject`)
+- Automatic diagnostic configuration for Cairo files
 
 ## Requirements
 
@@ -16,44 +18,68 @@ A Neovim plugin for Cairo language support, providing syntax highlighting, langu
 
 ## Installation
 
-### Using the Install Script
+### Requirements
 
-Run the provided install script to automatically copy the plugin files to your Neovim configuration:
+- [Scarb](https://docs.swmansion.com/scarb) - Cairo package manager and toolchain
+- [conform.nvim](https://github.com/stevearc/conform.nvim) (optional, for formatting support)
 
-```bash
-./install.sh
-```
-
-The script will:
-- Copy `lua/cairo.lua` to `~/.config/nvim/lua/plugins/cairo.lua`
-- Create the plugins directory if it doesn't exist
-
-### Manual Installation
-
-If you prefer manual installation, copy the `lua/cairo` directory to your Neovim configuration:
+### Install Scarb
 
 ```bash
-mkdir -p ~/.config/nvim/lua
-cp -r lua/cairo ~/.config/nvim/lua/
+curl --proto '=https' --tlsv1.2 -sSf https://install.scarb.sh | sh
 ```
 
-Then add the plugin to your `lazy.lua` configuration:
+Verify installation:
+
+```bash
+scarb --version
+```
+
+### Using lazy.nvim
+
+Add to your `lazy.lua` configuration:
 
 ```lua
 require("lazy").setup({
   -- ... other plugins
-  { dir = "~/.config/nvim/lua/cairo" },
+  {
+    "Abstrucked/cairo.nvim",
+    ft = "cairo",
+    dependencies = {
+      "neovim/nvim-lspconfig",
+      "stevearc/conform.nvim", -- optional for formatting
+    },
+    opts = {
+      -- optional: customize settings
+      root_markers = { "Scarb.toml", "cairo.toml", ".git" },
+      settings = {
+        cairo = {
+          -- cairo-ls specific settings
+        },
+      },
+      diagnostics = {
+        virtual_text = true,
+        underline = true,
+      },
+    },
+  },
 })
 ```
 
-### Direct Installation via Lazy
+### Manual Installation
 
-If the repository is published on GitHub, you can install it directly in your Lazy configuration:
+Clone the repository and add to your Neovim path:
+
+```bash
+git clone https://github.com/Abstrucked/cairo.nvim ~/.local/share/nvim/cairo.nvim
+```
+
+Then add to your lazy configuration:
 
 ```lua
 require("lazy").setup({
   -- ... other plugins
-  { "Abstrucked/cairo.nvim" },
+  { dir = "~/.local/share/nvim/cairo.nvim" },
 })
 ```
 
@@ -64,6 +90,28 @@ require("lazy").setup({
 3. Open a Cairo file (`.cairo`) in a Scarb project
 4. The language server should automatically start providing syntax highlighting and LSP features
 
+### Available Commands
+
+When editing a Cairo file, these commands become available:
+
+- `:CairoCheck` - Display detailed LSP status and diagnostics for the current buffer
+- `:CairoRestart` - Restart the Cairo LSP for the current buffer
+- `:CairoLocateProject` - Locate and open the project root directory
+
+### LSP Features
+
+- **Code Completion**: Press `<C-x><C-o>` or use your completion plugin
+- **Go to Definition**: Press `gd` to jump to symbol definitions
+- **Hover Information**: Press `K` to show documentation
+- **Diagnostics**: Errors and warnings are shown in the buffer
+
+### Formatting
+
+If you have conform.nvim installed, you can format Cairo files with:
+- `:ConformFormat` - Format the current buffer
+- Visual mode: Select text and format with `gq`
+- Or configure your formatter to format on save
+
 ## Testing
 
 Create a new Scarb project to test the setup:
@@ -73,6 +121,8 @@ scarb new test-cairo-project
 cd test-cairo-project
 # Open src/lib.cairo in Neovim
 ```
+
+Test the LSP by adding some code and using the commands above!
 
 ## Configuration
 
